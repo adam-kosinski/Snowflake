@@ -158,38 +158,34 @@ public class Snowflake extends Application
 
   private int updateState(int row, int col) //return 1 if freeze, 0 if melt
   {
-    ArrayList<Integer> neighborStates = new ArrayList<Integer>(getNeighborhood(row,col));
+    ArrayList<Integer> neighborStates = getNeighborhood(row,col);
     ArrayList<String> combos = new ArrayList<String>(Arrays.asList("000001","000011","000101","000111","001001","001011","001101","001111", "010101", "010111","011011","011111","111111"));
-    ArrayList<String> neighborStatesString = new ArrayList<String>();
+    String neighborStatesString = "";
 
-    for(int i; i < neighborStates.size(); i ++)
+    int combo_numb = 0;
+
+    for(int a = 0; a < neighborStates.size(); a ++)
     {
-      String temp = String.join(",", i);
-      neighborStatesString.add(temp);
+      	String temp = Integer.toString(neighborStates.get(a));
+	neighborStatesString += temp;
     }
 
-    for(int i; i < neighborStatesString.size(); i ++)
-    { //iterate thru each neighbor
-      for(int j; j < i.length(); j ++) //rotate order of neighborStatesString
-      {
-        i[-1] = i[0]; //lol would this actually work
-        for(int k; k < i.length(); z ++ ) //Check combos
-        {
-          int comboNumb;
-          for(int l; l < combos.size(); l ++) //iterate thru combos X-X
+    for(int j = 0; j < neighborStatesString.length(); j ++) //rotate order of neighborStatesString
+    {
+    	String stateCombos = neighborStatesString.substring(1) + neighborStatesString.substring(0,1);
+        
+          for(int l = 0; l < combos.size(); l ++) //iterate thru combos X-X
           {
-            if(i.equals(neighborStatesString.get(l)))
+            if(stateCombos.equals(combos.get(l)))
             {
-              comboNumb = l;
+              combo_numb = l;
             }
           }
-         }
+     }
 
-       }
-    }
 
-    double combo_pFreeze = p_freeze.get(comboNumb);
-    double combo_pMelt = p_melt.get(comboNumb);
+    double combo_pFreeze = p_freeze.get(combo_numb);
+    double combo_pMelt = p_melt.get(combo_numb);
     if(cur_random < combo_pFreeze)
     {
       return 1;
