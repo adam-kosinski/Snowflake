@@ -8,39 +8,83 @@ import javafx.scene.canvas.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 //code based on https://mathematica.stackexchange.com/questions/39361/how-to-generate-a-random-snowflake
 
 public class Snowflake extends Application
 {
-  private ArrayList<ArrayList<Integer>> grid;
+  private int grid_width;
+  private int grid_height;
+  private final double HEX_WIDTH;
   private ArrayList<Double> p_freeze;
   private ArrayList<Double> p_melt;
+
+  double cur_random; //stores a random value from 0 to 1, updated each time doIteration() is called
+
+  private ArrayList<ArrayList<Integer>> grid;
+  private ArrayList<ArrayList<Integer>> grid_buffer;
+  private int center_r;
+  private int center_c;
+  private ArrayList<ArrayList<Boolean>> updated_cells; //copy of the grid, storing whether the cell has been updated (0=no, 1=yes)
+
   private Canvas canvas;
 
-  private final double HEX_WIDTH;
 
   public Snowflake()
   {
+    grid_width = 31;
+    grid_height = 31;
+    p_freeze = new ArrayList<>(Arrays.asList(1.0, 0.2, 0.1, 0.0, 0.2, 0.1, 0.1, 0.0, 0.1, 0.1, 1.0, 1.0, 0.0));
+    p_melt = new ArrayList<>(Arrays.asList(0.0, 0.7, 0.5, 0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0, 0.2, 0.1, 0.0));
+    //all the numbers need decimal points or it breaks
+    HEX_WIDTH = 10;
+
+    cur_random = 0.5; //default, never used though
+
     //create grid
     grid = new ArrayList<>();
-    for(int r=0; r<11; r++)
+    for(int r=0; r<grid_height; r++)
     {
       ArrayList<Integer> row = new ArrayList<>();
-      for(int c=0; c<11; c++)
+      for(int c=0; c<grid_width; c++)
       {
         row.add(0);
       }
       grid.add(row);
     }
+    center_r = (int) Math.floor(grid.size()/2);
+    center_c = (int) Math.floor(grid.get(0).size()/2);
+    grid.get(center_r).set(center_c, 1); //start with a frozen particle in the center
 
-    //set p_freeze and p_melt
-    p_freeze = new ArrayList<>(Arrays.asList(1.0, 0.2, 0.1, 0.0, 0.2, 0.1, 0.1, 0.0, 0.1, 0.1, 1.0, 1.0, 0.0));
-    p_melt = new ArrayList<>(Arrays.asList(0.0, 0.7, 0.5, 0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0, 0.2, 0.1, 0.0));
-    //all the numbers need decimal points or it breaks
+    //make grid_buffer
+    grid_buffer = new ArrayList<>();
+    for(int r=0; r<grid_height; r++)
+    {
+      ArrayList<Integer> row = new ArrayList<>();
+      for(int c=0; c<grid_width; c++)
+      {
+        row.add(grid.get(r).get(c));
+      }
+      grid.add(row);
+    }
+
+    //create updated_cells array List
+    updated_cells = new ArrayList<>();
+    for(int r=0; r<grid_height; r++)
+    {
+      ArrayList<Boolean> row = new ArrayList<>();
+      for(int c=0; c<grid_width; c++)
+      {
+        row.add(false);
+      }
+      updated_cells.add(row);
+    }
+    updated_cells.get(center_r).set(center_c, true); //the middle cell starts filled
+
+
 
     canvas = new Canvas(600,600);
-    HEX_WIDTH = 30;
 }
   @Override
   public void start(Stage stage)
@@ -56,16 +100,108 @@ public class Snowflake extends Application
 
   private void doIteration()
   {
+    Random rand = new Random();
+    cur_random = rand.nextDouble();
 
+    //iterates through all the cells, calling updateState() on all the ones we haven't updated before
+    for(int r=0; r<grid.size(); r++)
+    {
+      for(int c=0; c<grid.get(0).size(); c++)
+      {
+        if(updated_cells.get(r).get(c) == false && getNeighborhood(r,c).contains(1))
+        {
+          int new_state = updateState(r,c); //1 if freeze, 0 if melt
+          grid_buffer.get(r).set(c, new_state);
+          updated_cells.get(r).set(c, true);
+        }
+      }
+    }
+    //copy grid buffer over to main grid
+    for(int r=0; r<grid_height; r++)
+    {
+      for(int c=0; c<grid_width; c++)
+      {
+        grid.get(r).set(c, grid_buffer.get(r).get(c));
+      }
+    }
+
+    drawGrid();
   }
 
-  private ArrayList<Boolean> getNeighborhood(int row, int col)
+  private ArrayList<Integer> getNeighborhood(int row, int col)
   {
-    return null;
+    //returns an arraylist of the values of the neighbors, in order
+
+    boolean shifted = (row-center_r) % 2 != 0;
+    ArrayList<Integer> neighborhood = new ArrayList<>();
+    //add the cells, starting from right, going counterclockwise
+    try{neighborhood.add(grid.get(row).get(col+1));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    try{neighborhood.add(grid.get(row-1).get(shifted? col+1 : col));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    try{neighborhood.add(grid.get(row-1).get(shifted? col : col-1));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    try{neighborhood.add(grid.get(row).get(col-1));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    try{neighborhood.add(grid.get(row+1).get(shifted? col : col-1));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    try{neighborhood.add(grid.get(row+1).get(shifted? col+1 : col));}
+    catch(IndexOutOfBoundsException ex){neighborhood.add(0);}
+
+    return neighborhood;
   }
 
-  private void updateState(int row, int col)
+  private int updateState(int row, int col) //return 1 if freeze, 0 if melt
   {
+    ArrayList<Integer> neighborStates = new ArrayList<Integer>(getNeighborhood(row,col));
+    ArrayList<String> combos = new ArrayList<String>(Arrays.asList("000001","000011","000101","000111","001001","001011","001101","001111", "010101", "010111","011011","011111","111111"));
+    ArrayList<String> neighborStatesString = new ArrayList<String>();
+
+    for(int i; i < neighborStates.size(); i ++)
+    {
+      String temp = String.join(",", i);
+      neighborStatesString.add(temp);
+    }
+
+    for(int i; i < neighborStatesString.size(); i ++)
+    { //iterate thru each neighbor
+      for(int j; j < i.length(); j ++) //rotate order of neighborStatesString
+      {
+        i[-1] = i[0]; //lol would this actually work
+        for(int k; k < i.length(); z ++ ) //Check combos
+        {
+          int comboNumb;
+          for(int l; l < combos.size(); l ++) //iterate thru combos X-X
+          {
+            if(i.equals(neighborStatesString.get(l)))
+            {
+              comboNumb = l;
+            }
+          }
+         }
+
+       }
+    }
+
+    double combo_pFreeze = p_freeze.get(comboNumb);
+    double combo_pMelt = p_melt.get(comboNumb);
+    if(cur_random < combo_pFreeze)
+    {
+      return 1;
+    }
+    else if(cur_random > combo_pMelt)
+    {
+      return 0;
+    }
+    else
+    {
+      return 1;
+    }
 
   }
 
@@ -79,9 +215,6 @@ public class Snowflake extends Application
       for(int c=0; c<grid.get(0).size(); c++)
       {
         //draw hexagon
-        int center_r = (int) Math.floor(grid.size()/2);
-        int center_c = (int) Math.floor(grid.get(0).size()/2);
-
         double x = center_x + (c - center_c)*HEX_WIDTH;
         double y_offset = HEX_WIDTH*(3/(2*Math.sqrt(3)));
         double y = center_y + (r - center_r)*y_offset;
