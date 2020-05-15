@@ -66,7 +66,7 @@ public class Snowflake extends Application
       {
         row.add(grid.get(r).get(c));
       }
-      grid.add(row);
+      grid_buffer.add(row);
     }
 
     //create updated_cells array List
@@ -96,13 +96,20 @@ public class Snowflake extends Application
     Scene scene = new Scene(group, 600, 600);
     stage.setScene(scene);
     stage.show();
+	
+	doIteration();
+	doIteration();
+	doIteration();
+	doIteration();
+	doIteration();
+	doIteration();
   }
 
   private void doIteration()
   {
     Random rand = new Random();
     cur_random = rand.nextDouble();
-
+	
     //iterates through all the cells, calling updateState() on all the ones we haven't updated before
     for(int r=0; r<grid.size(); r++)
     {
@@ -167,7 +174,7 @@ public class Snowflake extends Application
     for(int a = 0; a < neighborStates.size(); a ++)
     {
       	String temp = Integer.toString(neighborStates.get(a));
-	neighborStatesString += temp;
+		neighborStatesString += temp;
     }
 
     for(int j = 0; j < neighborStatesString.length(); j ++) //rotate order of neighborStatesString
@@ -190,22 +197,26 @@ public class Snowflake extends Application
     {
       return 1;
     }
-    else if(cur_random > combo_pMelt)
+    /*else if(cur_random < combo_pMelt)
     {
       return 0;
-    }
+    }*/
     else
     {
-      return 1;
+      return 0;
     }
 
   }
 
   private void drawGrid()
-  {
-    double center_x = canvas.getWidth()/2;
+  {	
+	double center_x = canvas.getWidth()/2;
     double center_y = canvas.getHeight()/2;
+	
     GraphicsContext ctx = canvas.getGraphicsContext2D();
+	ctx.clearRect(0,0,canvas.getWidth(),canvas.getHeight());
+	
+	//iterate through grid, drawing all the hexagons
     for(int r=0; r<grid.size(); r++)
     {
       for(int c=0; c<grid.get(0).size(); c++)
