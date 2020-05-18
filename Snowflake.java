@@ -9,11 +9,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 //code based on https://mathematica.stackexchange.com/questions/39361/how-to-generate-a-random-snowflake
 
 public class Snowflake extends Application
 {
+  private int n_iterations;
+  private long delay_between_iterations;
   private int grid_width;
   private int grid_height;
   private final double HEX_WIDTH;
@@ -21,6 +24,7 @@ public class Snowflake extends Application
   private ArrayList<Double> p_melt;
 
   double cur_random; //stores a random value from 0 to 1, updated each time doIteration() is called
+  double iterations_done;
 
   private ArrayList<ArrayList<Integer>> grid;
   private ArrayList<ArrayList<Integer>> grid_buffer;
@@ -33,14 +37,21 @@ public class Snowflake extends Application
 
   public Snowflake()
   {
-    grid_width = 31;
-    grid_height = 31;
-    p_freeze = new ArrayList<>(Arrays.asList(1.0, 0.2, 0.1, 0.0, 0.2, 0.1, 0.1, 0.0, 0.1, 0.1, 1.0, 1.0, 0.0));
-    p_melt = new ArrayList<>(Arrays.asList(0.0, 0.7, 0.5, 0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0, 0.2, 0.1, 0.0));
+    n_iterations = 30;
+    delay_between_iterations = 1000; //long type, in ms
+    grid_width = n_iterations*2 + 1;
+    grid_height = n_iterations*2 + 1;
+    // p 1 to 14 from stack overflow combos except first combo is all melted
+    //p_freeze = new ArrayList<>(Arrays.asList(0.0, 1.0, 0.4, 0.33, 0.5, 0.7, 0.4, 0.4, 0.66, 0.5, 0.6, 0.6, 0.83, 0.2));
+    //p_melt = new ArrayList<>(Arrays.asList(0.5, 0.0, 0.6, 0.66, 0.5, 0.3, 0.6, 0.6, 0.33, 0.5, 0.4, 0.4, 0.17, 0.8));
+    p_freeze = new ArrayList<>(Arrays.asList(0.0, 1.0, 0.2, 0.1, 0.0, 0.2, 0.1, 0.1, 0.0, 0.1, 0.1, 1.0, 1.0, 0.0));
+    p_melt = new ArrayList<>(Arrays.asList(0.5, 0.0, 0.7, 0.5, 0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0, 0.2, 0.1, 0.0));
+
     //all the numbers need decimal points or it breaks
-    HEX_WIDTH = 10;
+    HEX_WIDTH = 5;
 
     cur_random = 0.5; //default, never used though
+    iterations_done = 0;
 
     //create grid
     grid = new ArrayList<>();
@@ -96,31 +107,35 @@ public class Snowflake extends Application
     Scene scene = new Scene(group, 600, 600);
     stage.setScene(scene);
     stage.show();
-	
-	doIteration();
-	doIteration();
-	doIteration();
-	doIteration();
-	doIteration();
-	doIteration();
+
+    for(int i=0; i<n_iterations; i++)
+    {
+      /*try{
+        TimeUnit.MILLISECONDS.sleep(delay_between_iterations);
+      }
+      catch(InterruptedException ex)
+      {
+        ex.printStackTrace();
+      }*/
+      doIteration();
+    }
   }
 
   private void doIteration()
   {
     Random rand = new Random();
     cur_random = rand.nextDouble();
-	
-    //iterates through all the cells, calling updateState() on all the ones we haven't updated before
+
+    //iterates through all the cells, calling updateState() on all of them
     for(int r=0; r<grid.size(); r++)
     {
       for(int c=0; c<grid.get(0).size(); c++)
       {
-        if(updated_cells.get(r).get(c) == false && getNeighborhood(r,c).contains(1))
-        {
-          int new_state = updateState(r,c); //1 if freeze, 0 if melt
-          grid_buffer.get(r).set(c, new_state);
-          updated_cells.get(r).set(c, true);
-        }
+          if(! (r == center_r && c == center_c)) //never change the center one
+          {
+            int new_state = updateState(r,c); //1 if freeze, 0 if melt
+            grid_buffer.get(r).set(c, new_state);
+          }
       }
     }
     //copy grid buffer over to main grid
@@ -133,6 +148,7 @@ public class Snowflake extends Application
     }
 
     drawGrid();
+    iterations_done += 1;
   }
 
   private ArrayList<Integer> getNeighborhood(int row, int col)
@@ -166,7 +182,7 @@ public class Snowflake extends Application
   private int updateState(int row, int col) //return 1 if freeze, 0 if melt
   {
     ArrayList<Integer> neighborStates = getNeighborhood(row,col);
-    ArrayList<String> combos = new ArrayList<String>(Arrays.asList("000001","000011","000101","000111","001001","001011","001101","001111", "010101", "010111","011011","011111","111111"));
+    ArrayList<String> combos = new ArrayList<String>(Arrays.asList("000000","000001","000011","000101","000111","001001","001011","001101","001111", "010101", "010111","011011","011111","111111"));
     String neighborStatesString = "";
 
     int combo_numb = 0;
@@ -174,64 +190,89 @@ public class Snowflake extends Application
     for(int a = 0; a < neighborStates.size(); a ++)
     {
       	String temp = Integer.toString(neighborStates.get(a));
-		neighborStatesString += temp;
+		    neighborStatesString += temp;
     }
 
+    test_loop:
     for(int j = 0; j < neighborStatesString.length(); j ++) //rotate order of neighborStatesString
     {
-    	String stateCombos = neighborStatesString.substring(1) + neighborStatesString.substring(0,1);
-        
+
+      neighborStatesString = neighborStatesString.substring(1) + neighborStatesString.substring(0,1);
+
           for(int l = 0; l < combos.size(); l ++) //iterate thru combos X-X
           {
-            if(stateCombos.equals(combos.get(l)))
+
+            if(neighborStatesString.equals(combos.get(l)))
             {
               combo_numb = l;
+              break test_loop;
             }
           }
      }
 
+    //get factor to multiply probabilities by: 0 at the center, 1 near the tips
+    double[] coords = getHexCoords(row, col);
+    double[] center = {canvas.getWidth()/2, canvas.getHeight()/2};
+    double dist_from_center = Math.hypot(coords[0]-center[0], coords[1]-center[1]);
+    dist_from_center /= HEX_WIDTH;
+    double factor = iterations_done == 0 ? 1 : dist_from_center / iterations_done;
 
-    double combo_pFreeze = p_freeze.get(combo_numb);
-    double combo_pMelt = p_melt.get(combo_numb);
-    if(cur_random < combo_pFreeze)
+    double combo_pFreeze = factor*p_freeze.get(combo_numb);
+    double combo_pMelt = factor*p_melt.get(combo_numb);
+    if(grid.get(row).get(col) == 0)
     {
-      return 1;
+      if(cur_random < combo_pFreeze)
+      {
+          return 1;
+      }
+      return 0;
     }
-    /*else if(cur_random < combo_pMelt)
+    else //if frozen
     {
-      return 0;
-    }*/
-    else
-    {
-      return 0;
+      if(cur_random < combo_pMelt)
+      {
+        return 0;
+      }
+      return 1;
     }
 
   }
 
   private void drawGrid()
-  {	
-	double center_x = canvas.getWidth()/2;
-    double center_y = canvas.getHeight()/2;
-	
+  {
+
     GraphicsContext ctx = canvas.getGraphicsContext2D();
-	ctx.clearRect(0,0,canvas.getWidth(),canvas.getHeight());
-	
+	  ctx.clearRect(0,0,canvas.getWidth(),canvas.getHeight());
+    ctx.setFill(Color.BLACK);
+    ctx.fillRect(0,0,canvas.getWidth(),canvas.getHeight());
+
 	//iterate through grid, drawing all the hexagons
     for(int r=0; r<grid.size(); r++)
     {
       for(int c=0; c<grid.get(0).size(); c++)
       {
         //draw hexagon
-        double x = center_x + (c - center_c)*HEX_WIDTH;
-        double y_offset = HEX_WIDTH*(3/(2*Math.sqrt(3)));
-        double y = center_y + (r - center_r)*y_offset;
-        if((r-center_r) % 2 != 0)
-        {
-          x += HEX_WIDTH/2;
-        }
-        drawHexagon(ctx, x, y, grid.get(r).get(c));
+        double[] coords = getHexCoords(r, c);
+        drawHexagon(ctx, coords[0], coords[1], grid.get(r).get(c));
       }
     }
+  }
+
+  private double[] getHexCoords(int r, int c)
+  {
+    double center_x = canvas.getWidth()/2;
+    double center_y = canvas.getHeight()/2;
+
+    double x = center_x + (c - center_c)*HEX_WIDTH;
+    double y_offset = HEX_WIDTH*(3/(2*Math.sqrt(3)));
+    double y = center_y + (r - center_r)*y_offset;
+    if((r-center_r) % 2 != 0)
+    {
+      x += HEX_WIDTH/2;
+    }
+
+    double[] out = {x, y};
+    return out;
   }
 
   private void drawHexagon(GraphicsContext ctx, double x, double y, int grid_value) //x,y of center of hexagon
@@ -255,8 +296,9 @@ public class Snowflake extends Application
     };
     if(grid_value != 0)
     {
+      ctx.setFill(Color.WHITE);
       ctx.fillPolygon(x_points, y_points, 6);
     }
-    ctx.strokePolygon(x_points, y_points, 6); //6 points
+    //ctx.strokePolygon(x_points, y_points, 6); //6 points
   }
 }
