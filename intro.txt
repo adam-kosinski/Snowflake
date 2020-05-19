@@ -9,3 +9,5 @@ ways to generate a snowflake, discussing how to iterate through the hexagonal gr
 and figuring out how to do melting/freezing logic. Adam worked on making the hexagonal grid, iterating through the snowflake, animation and coloring the
 snowflake. Cindy worked on the logic to figure out what state (freezing/melting) a cell should change
 to based on its neighbors.
+
+Project based on https://mathematica.stackexchange.com/questions/39361/how-to-generate-a-random-snowflake
