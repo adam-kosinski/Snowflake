@@ -1,0 +1,11 @@
+Snowflake Generator:
+
+By: Adam Kosinski and Cindy Zhu
+
+This snowflake generator generates a random snowflake that has a color gradient.
+We worked on the code together in several sessions and also edited outside of those. During
+our meetings, we mainly split up the project and discussed ideas. We spent a lot of time researching
+ways to generate a snowflake, discussing how to iterate through the hexagonal grid when generating,
+and figuring out how to do melting/freezing logic. Adam worked on making the hexagonal grid, iterating through the snowflake, animation and coloring the
+snowflake. Cindy worked on the logic to figure out what state (freezing/melting) a cell should change
+to based on its neighbors.
