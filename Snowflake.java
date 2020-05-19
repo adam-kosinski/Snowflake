@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.Optional;
 
 //code based on https://mathematica.stackexchange.com/questions/39361/how-to-generate-a-random-snowflake
 
@@ -37,15 +38,15 @@ public class Snowflake extends Application
 
   public Snowflake()
   {
-    n_iterations = 30;
-    delay_between_iterations = 1000; //long type, in ms
+    n_iterations = 20;
+    delay_between_iterations = 150; //long type, in ms
     grid_width = n_iterations*2 + 1;
     grid_height = n_iterations*2 + 1;
     // p 1 to 14 from stack overflow combos except first combo is all melted
     //p_freeze = new ArrayList<>(Arrays.asList(0.0, 1.0, 0.4, 0.33, 0.5, 0.7, 0.4, 0.4, 0.66, 0.5, 0.6, 0.6, 0.83, 0.2));
     //p_melt = new ArrayList<>(Arrays.asList(0.5, 0.0, 0.6, 0.66, 0.5, 0.3, 0.6, 0.6, 0.33, 0.5, 0.4, 0.4, 0.17, 0.8));
     p_freeze = new ArrayList<>(Arrays.asList(0.0, 1.0, 0.2, 0.1, 0.0, 0.2, 0.1, 0.1, 0.0, 0.1, 0.1, 1.0, 1.0, 0.0));
-    p_melt = new ArrayList<>(Arrays.asList(0.5, 0.0, 0.7, 0.5, 0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0, 0.2, 0.1, 0.0));
+    p_melt = new ArrayList<>(Arrays.asList(0.5, 1.0, 0.3, 0.5, 0.5, 1.0, 1.0, 1.0, 0.7, 0.5, 1.0, 0.8, 0.9, 1.0));
 
     //all the numbers need decimal points or it breaks
     HEX_WIDTH = 5;
@@ -108,17 +109,19 @@ public class Snowflake extends Application
     stage.setScene(scene);
     stage.show();
 
-    for(int i=0; i<n_iterations; i++)
-    {
-      /*try{
-        TimeUnit.MILLISECONDS.sleep(delay_between_iterations);
+    //animate the snowflake growth
+      Runnable task = new Runnable(){
+      public void run(){
+        if(iterations_done >= n_iterations) {
+          //don't do anything - doesn't stop the runnable from executing, but nothing happens
+        }
+        else {
+          doIteration();
+        }
       }
-      catch(InterruptedException ex)
-      {
-        ex.printStackTrace();
-      }*/
-      doIteration();
-    }
+    };
+    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    scheduler.scheduleAtFixedRate(task, delay_between_iterations, delay_between_iterations, TimeUnit.MILLISECONDS);
   }
 
   private void doIteration()
@@ -216,6 +219,7 @@ public class Snowflake extends Application
     double dist_from_center = Math.hypot(coords[0]-center[0], coords[1]-center[1]);
     dist_from_center /= HEX_WIDTH;
     double factor = iterations_done == 0 ? 1 : dist_from_center / iterations_done;
+    factor = factor*factor; //scaling quadratically works better for not changing the center too much, still ranges 0 to 1
 
     double combo_pFreeze = factor*p_freeze.get(combo_numb);
     double combo_pMelt = factor*p_melt.get(combo_numb);
