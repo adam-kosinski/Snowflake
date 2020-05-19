@@ -31,7 +31,6 @@ public class Snowflake extends Application
   private ArrayList<ArrayList<Integer>> grid_buffer;
   private int center_r;
   private int center_c;
-  private ArrayList<ArrayList<Boolean>> updated_cells; //copy of the grid, storing whether the cell has been updated (0=no, 1=yes)
 
   private Canvas canvas;
 
@@ -81,21 +80,6 @@ public class Snowflake extends Application
       grid_buffer.add(row);
     }
 
-    //create updated_cells array List
-    updated_cells = new ArrayList<>();
-    for(int r=0; r<grid_height; r++)
-    {
-      ArrayList<Boolean> row = new ArrayList<>();
-      for(int c=0; c<grid_width; c++)
-      {
-        row.add(false);
-      }
-      updated_cells.add(row);
-    }
-    updated_cells.get(center_r).set(center_c, true); //the middle cell starts filled
-
-
-
     canvas = new Canvas(600,600);
 }
   @Override
@@ -136,8 +120,11 @@ public class Snowflake extends Application
       {
           if(! (r == center_r && c == center_c)) //never change the center one
           {
-            int new_state = updateState(r,c); //1 if freeze, 0 if melt
-            grid_buffer.get(r).set(c, new_state);
+            if(grid.get(r).get(c) == 1 || getNeighborhood(r,c).contains(1)) //optimization check
+            {
+              int new_state = updateState(r,c); //1 if freeze, 0 if melt
+              grid_buffer.get(r).set(c, new_state);
+            }
           }
       }
     }
@@ -300,9 +287,38 @@ public class Snowflake extends Application
     };
     if(grid_value != 0)
     {
-      ctx.setFill(Color.WHITE);
+      ctx.setFill(getColor(x,y));
       ctx.fillPolygon(x_points, y_points, 6);
     }
     //ctx.strokePolygon(x_points, y_points, 6); //6 points
+  }
+
+  private Paint getColor(double x, double y) //x and y are pixel coordinates of center of hexagon
+  {
+    double center_x = canvas.getWidth()/2;
+    double center_y = canvas.getHeight()/2;
+
+    double dx = x-center_x;
+    double dy = y-center_y;
+    double r = Math.hypot(dx,dy);
+    if(r < 0.0001)
+    {
+      return Color.WHITE;
+    }
+
+    //determine radial fraction for interpolation
+    double theta = Math.acos(dx/r);
+    if(dy < 0){theta = 2*Math.PI-theta;}
+    double radial_fraction = 2*Math.abs((theta % (Math.PI/3.0)) / (Math.PI/3.0) - 0.5);
+
+    //determine center fraction for interpolation
+    double center_fraction = r/(iterations_done*HEX_WIDTH);
+    if(center_fraction < 0.25){center_fraction = 0;}
+    else if(center_fraction > 0.75){center_fraction = 1;}
+    else {center_fraction = 2*(center_fraction-0.25);}
+
+    //interpolate and return
+    Color tint = Color.FUCHSIA.interpolate(Color.ROYALBLUE, center_fraction);
+    return tint.interpolate(Color.WHITE, radial_fraction);
   }
 }
