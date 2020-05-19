@@ -24,6 +24,7 @@ public class Snowflake extends Application
   private ArrayList<Double> p_freeze;
   private ArrayList<Double> p_melt;
 
+  private static Random rand;
   double cur_random; //stores a random value from 0 to 1, updated each time doIteration() is called
   double iterations_done;
 
@@ -34,6 +35,10 @@ public class Snowflake extends Application
 
   private Canvas canvas;
 
+  static
+  {
+	rand = new Random();
+  }
 
   public Snowflake()
   {
@@ -120,7 +125,6 @@ public class Snowflake extends Application
 
   private void doIteration()
   {
-    Random rand = new Random();
     cur_random = rand.nextDouble();
 
     //iterates through all the cells, calling updateState() on all of them
@@ -190,7 +194,7 @@ public class Snowflake extends Application
     for(int a = 0; a < neighborStates.size(); a ++)
     {
       	String temp = Integer.toString(neighborStates.get(a));
-		    neighborStatesString += temp;
+		neighborStatesString += temp;
     }
 
     test_loop:
@@ -243,7 +247,7 @@ public class Snowflake extends Application
   {
 
     GraphicsContext ctx = canvas.getGraphicsContext2D();
-	  ctx.clearRect(0,0,canvas.getWidth(),canvas.getHeight());
+	ctx.clearRect(0,0,canvas.getWidth(),canvas.getHeight());
     ctx.setFill(Color.BLACK);
     ctx.fillRect(0,0,canvas.getWidth(),canvas.getHeight());
 
