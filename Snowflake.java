@@ -51,6 +51,17 @@ public class Snowflake extends Application
     HEX_WIDTH = 5;
 
     cur_random = 0.5; //default, never used though
+
+    center_r = (int) Math.floor(grid_height/2);
+    center_c = (int) Math.floor(grid_width/2);
+
+    canvas = new Canvas(600,600);
+
+    setup();
+}
+
+  private void setup()
+  {
     iterations_done = 0;
 
     //create grid
@@ -64,8 +75,6 @@ public class Snowflake extends Application
       }
       grid.add(row);
     }
-    center_r = (int) Math.floor(grid.size()/2);
-    center_c = (int) Math.floor(grid.get(0).size()/2);
     grid.get(center_r).set(center_c, 1); //start with a frozen particle in the center
 
     //make grid_buffer
@@ -79,9 +88,8 @@ public class Snowflake extends Application
       }
       grid_buffer.add(row);
     }
+  }
 
-    canvas = new Canvas(600,600);
-}
   @Override
   public void start(Stage stage)
   {
@@ -97,7 +105,7 @@ public class Snowflake extends Application
       Runnable task = new Runnable(){
       public void run(){
         if(iterations_done >= n_iterations) {
-          //don't do anything - doesn't stop the runnable from executing, but nothing happens
+          //don't do anything - doesn't stop the runnable from executing, but nothing happens - intended behavior to allow restart to work
         }
         else {
           doIteration();
@@ -106,6 +114,8 @@ public class Snowflake extends Application
     };
     ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     scheduler.scheduleAtFixedRate(task, delay_between_iterations, delay_between_iterations, TimeUnit.MILLISECONDS);
+
+    canvas.setOnMouseClicked(e->{setup();}); //restart the animation when you click
   }
 
   private void doIteration()
